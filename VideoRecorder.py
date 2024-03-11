@@ -2,6 +2,12 @@ import cv2 as cv
 import numpy as np
 from datetime import datetime
 
+
+target_fps = 30
+target_fourcc = 'MJPG'
+target_format = '.avi'
+source = 'rtsp://210.99.70.120:1935/live/cctv001.stream'
+
 ESC_KEY = 27
 SPACE_KEY = 32
 
@@ -42,9 +48,9 @@ def Draw_Text(img, is_recording, is_enlarged, is_fliped, is_contrast, is_brightn
     else:
         cv.putText(frame_with_text, '[F]: Flip', Fliped_TextPlace, cv.FONT_HERSHEY_DUPLEX, 0.5, (255, 255, 255))
 
-    ## +/- Controlled:
+    ## +/- Controled:
     PlusMinus_TextPlace = (20, 30 + 20*4)
-    cv.putText(frame_with_text, '[+/-] Controll:', PlusMinus_TextPlace, cv.FONT_HERSHEY_DUPLEX, 0.5, ( 255, 255, 255))    
+    cv.putText(frame_with_text, '[+/-] Control:', PlusMinus_TextPlace, cv.FONT_HERSHEY_DUPLEX, 0.5, ( 255, 255, 255))    
 
     ## Contrast
     Contrast_TextPlace = (20, 30 + 20*5)
@@ -81,11 +87,11 @@ def Draw_and_Show(img, is_recording, is_enlarged, is_fliped, is_contrast, is_bri
 
     targetImage = Draw_Text(targetImage, is_recording, is_enlarged, is_fliped, is_contrast, is_brightness, contrast, brightness)
 
-    cv.imshow('Preview', targetImage)   # Play video
+    cv.imshow('Video-Viewer-Recorder', targetImage)   # Play video
 
 def Record(img, target, target_fps, target_fourcc):
     if not target.isOpened():
-        target_file = datetime.now().strftime("%Y%m%d_%H%M%S") + '.avi'
+        target_file = datetime.now().strftime("%Y%m%d_%H%M%S") + target_format
         h,w,*_ = img.shape
         is_color = (img.ndim >2) and (img.shape[2]>1)
         target.open(target_file, cv.VideoWriter_fourcc(*target_fourcc), target_fps, (w,h), is_color)        
@@ -137,18 +143,15 @@ is_brightness = False
 contrast = 0
 brightness = 0
 
-target_fps = 30
-target_fourcc = 'MJPG'
-source = 'rtsp://210.99.70.120:1935/live/cctv001.stream'
 
 video = Init_Video(source)  # Get Video source
 
 if video.isOpened():
     target = cv.VideoWriter()
 
-cv.namedWindow('Preview')    
+cv.namedWindow('Video-Viewer-Recorder')    
 mouse_xy = [-1, -1]
-cv.setMouseCallback('Preview', mouse_event_handler, mouse_xy)
+cv.setMouseCallback('Video-Viewer-Recorder', mouse_event_handler, mouse_xy)
 
 while True:
     valid, img = video.read()
