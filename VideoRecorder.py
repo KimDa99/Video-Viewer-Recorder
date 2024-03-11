@@ -1,4 +1,5 @@
 import cv2 as cv
+import numpy as np
 from datetime import datetime
 
 ESC_KEY = 27
@@ -8,17 +9,55 @@ def Init_Video(source):
     video = cv.VideoCapture(source)
     return video
 
-def Draw_and_Show(img, is_recording):
-    frame_with_text = img.copy()    
+def Draw_Text(img, is_recording, is_enlarged, is_fliped, is_contrast, is_brightness, is_rotate, contrast, brightness, rotate):
+    frame_with_text = img.copy()
+
+    # Draw a transparent rectangle
+    overlay = frame_with_text.copy()
+    cv.rectangle(overlay, (10, 10), (250, 45 + 20*8), color=(0, 0, 0), thickness=-1)
+    cv.addWeighted(overlay, 0.6, frame_with_text, 1 - 0.6, 0, frame_with_text)
+
+    ## Exit
+    Exit_TextPlace = (20, 30)
+    cv.putText(frame_with_text, '[ESC]: Exit', Exit_TextPlace, cv.FONT_HERSHEY_DUPLEX, 0.5, ( 255, 255, 255))
 
     ## Recording
-    Recording_TextPlace = (50,50)
+    Recording_TextPlace = (20,30 + 20)
     if is_recording:
-        cv.putText(frame_with_text, 'Recording', Recording_TextPlace, cv.FONT_HERSHEY_DUPLEX, 0.5, ( 0, 0, 255))
+        cv.putText(frame_with_text, '[SPACE]: Recording', Recording_TextPlace, cv.FONT_HERSHEY_DUPLEX, 0.5, ( 0, 0, 255))
+    else:
+        cv.putText(frame_with_text, '[SPACE]: NOT Recording', Recording_TextPlace, cv.FONT_HERSHEY_DUPLEX, 0.5, (255, 255, 255))
+
+    ## Magnifying
+    Recording_TextPlace = (20,30 + 20*2)
+    if is_enlarged:
+        cv.putText(frame_with_text, '[E]: Enlarging', Recording_TextPlace, cv.FONT_HERSHEY_DUPLEX, 0.5, ( 0, 0, 255))
+    else:
+        cv.putText(frame_with_text, '[E]: Enlarge', Recording_TextPlace, cv.FONT_HERSHEY_DUPLEX, 0.5, (255, 255, 255))
+
+    ## Fliped
+    Fliped_TextPlace = (20, 30 + 20*3)
+    if is_fliped:
+        cv.putText(frame_with_text, '[F]: Fliped', Fliped_TextPlace, cv.FONT_HERSHEY_DUPLEX, 0.5, ( 0, 0, 255))
+    else:
+        cv.putText(frame_with_text, '[F]: Flip', Fliped_TextPlace, cv.FONT_HERSHEY_DUPLEX, 0.5, (255, 255, 255))
+
     else:
         cv.putText(frame_with_text, 'NOT Recording', Recording_TextPlace, cv.FONT_HERSHEY_DUPLEX, 0.5, (255, 255, 0))
+        
+    return frame_with_text
 
-    cv.imshow('Preview', frame_with_text)   # Play video
+def Draw_and_Show(img, is_recording, is_enlarged, is_fliped, is_contrast, is_brightness, is_rotate, contrast, brightness, rotate, mouse_xy):
+    targetImage = img.copy()
+
+    if is_fliped:
+        targetImage = cv.flip(targetImage, 1)
+    if is_enlarged:
+        targetImage = Enlarge(targetImage, mouse_xy)
+
+    targetImage = Draw_Text(targetImage, is_recording, is_enlarged, is_fliped, is_contrast, is_brightness, is_rotate, contrast, brightness, rotate)
+
+    cv.imshow('Preview', targetImage)   # Play video
 
 def Record(img, target, target_fps, target_fourcc):
     if not target.isOpened():
@@ -43,9 +82,29 @@ def Manage_Recording(is_recording, img, target, target_fps, target_fourcc):
     elif target.isOpened(): # Close when the recording is done
         target.release()
 
+def mouse_event_handler(event, x, y, flags, param):
+    if event == cv.EVENT_MOUSEMOVE:
+        param[0] = x
+        param[1] = y
+
+def Enlarge(img, mouse_xy, zoom_box_radius = 10, zoom_level = 5, zoom_box_margin = 10):
+    img_copy = img.copy()
+    img_height, img_width, *_ = img.shape
+
+    if mouse_xy[0] >= zoom_box_radius and mouse_xy[0] < (img_width - zoom_box_radius) and \
+    mouse_xy[1]>= zoom_box_radius and mouse_xy[1] < (img_height - zoom_box_radius):
+        img_crop = img[mouse_xy[1]-zoom_box_radius : mouse_xy[1]+zoom_box_radius, \
+                       mouse_xy[0] - zoom_box_radius : mouse_xy[0] + zoom_box_radius, :]
+        zoom_box = cv.resize(img_crop, None, None, zoom_level, zoom_level)
+        s = img_width - zoom_box_margin - len(zoom_box)
+        e = img_width - zoom_box_margin
+        u = zoom_box_margin
+        v = zoom_box_margin + len(zoom_box)
+        img_copy[u:v, s:e,:] = zoom_box
+
+    return img_copy
+
 # To Do
-# [] Zoom in Mouse Area : Z
-# [] Flip: F
 # [] Image Subtraction: S
 # [] Filters: +/-
     # [] Contrast: C
@@ -54,6 +113,17 @@ def Manage_Recording(is_recording, img, target, target_fps, target_fourcc):
 # [] Reset: T
 
 is_recording = False
+is_enlarged = False
+is_fliped = False
+is_contrast = False
+is_brightness = False
+is_rotate = False
+is_subtract = False
+
+contrast = 0
+brightness = 0
+rotate = 0
+
 target_fps = 30
 target_fourcc = 'MJPG'
 source = 'rtsp://210.99.70.120:1935/live/cctv001.stream'
@@ -63,6 +133,10 @@ video = Init_Video(source)  # Get Video source
 if video.isOpened():
     target = cv.VideoWriter()
 
+cv.namedWindow('Preview')    
+mouse_xy = [-1, -1]
+cv.setMouseCallback('Preview', mouse_event_handler, mouse_xy)
+
 while True:
     valid, img = video.read()
 
@@ -70,16 +144,18 @@ while True:
         print("Not Valid")
         break
 
-    if key == ESC_KEY: # Exit: ESC
-        break
-    elif key == SPACE_KEY:   # Record on/off: Space
-        if is_recording == True:
-            is_recording = False
-        else:
-            is_recording = True
-
-    Draw_and_Show(img, is_recording)    # Draw What is needed and show
+    Draw_and_Show(img, is_recording, is_enlarged, is_fliped, is_contrast, is_brightness, is_rotate, contrast, brightness, rotate, mouse_xy)    # Draw What is needed and show
     Manage_Recording(is_recording, img, target,  target_fps, target_fourcc) # Record
     key = cv.waitKey(1)
+
+    if key == ESC_KEY:
+        break
+    elif key == SPACE_KEY:
+        is_recording = not is_recording
+    elif key == ord('E') or key == ord('e'):
+        is_enlarged = not is_enlarged
+    elif key == ord('F') or key == ord('f'):
+        is_fliped = not is_fliped
+    
 
 End_Program(video, target)
