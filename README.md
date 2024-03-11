@@ -6,8 +6,8 @@ https://github.com/KimDa99/Video-Viewer-Recorder/assets/91198933/2b83d592-9ecb-4
 # How to use
 ## How to set video:
 ![image](https://github.com/KimDa99/Video-Viewer-Recorder/assets/91198933/4109f593-5cbe-40dc-8565-18ee85ab6d80)
-Set target_fps, target_fourcc, target_format, source values in the VideoRecorder.py file (line 5~8) as you want to save & playing video to be.
- 
+
+Set target_fps, target_fourcc, target_format, source values in the VideoRecorder.py file (line 5~8) as you want to Save & playing video to be. 
 
 
 ## Features
